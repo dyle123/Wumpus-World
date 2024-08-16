@@ -6,6 +6,7 @@ from tkinter import messagebox
 import sys
 import subprocess
 from PIL import Image, ImageTk, ImageDraw, ImageFont
+import time
 
 
 
@@ -40,7 +41,7 @@ class Agent:
             'P_G': pygame.image.load(os.path.join(image_folder, 'gas.png')),
         }
         for key in self.element_images:
-            self.element_images[key] = pygame.transform.scale(self.element_images[key], (30, 30))  # Thay đổi kích thước hình ảnh
+            self.element_images[key] = pygame.transform.scale(self.element_images[key], (25, 25))  # Thay đổi kích thước hình ảnh
 
         self.percepts_image = {
             'B': pygame.image.load(os.path.join(image_folder, 'breeze.png')),
@@ -150,6 +151,52 @@ class Agent:
 
         pygame.display.flip()  # Cập nhật màn hình
         current_pos = (agent_x, agent_y)
+        
+        if 'G' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có vàng
+                if current_pos not in self.gold_appear_time:
+                    self.gold_appear_time[current_pos] = time.time()
+                elif time.time() - self.gold_appear_time[current_pos] >= 0.0000000001:
+                    self.getgold = True
+                    self.score += 5000
+                    map_matrix[agent_x][agent_y].remove('G')
+                    self.gold_appear_time.pop(current_pos)
+
+        elif 'H_P' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có bình máu
+                if current_pos not in self.hp_pos:
+                    self.hp_pos[current_pos] = time.time()
+                elif time.time() - self.hp_pos[current_pos] >= 0.0000000001:
+                    self.jar += 1
+                    map_matrix[agent_x][agent_y].remove('H_P')
+                    self.hp_pos.pop(current_pos)
+                    if self.health < 100:
+                        self.jar -= 1
+                        self.health += 25
+                    # Các tọa độ của ô kề
+                    adjacent_cells = [
+                        (agent_x - 1, agent_y),  # Ô trên
+                        (agent_x + 1, agent_y),  # Ô dưới
+                        (agent_x, agent_y - 1),  # Ô trái
+                        (agent_x, agent_y + 1)   # Ô phải
+                    ]
+                    # Duyệt qua các ô kề
+                    for (x, y) in adjacent_cells:
+                        # Kiểm tra nếu ô kề nằm trong phạm vi bản đồ và chứa 'G_L'
+                        if 0 <= x < len(map_matrix) and 0 <= y < len(map_matrix[0]):
+                            if 'G_L' in map_matrix[x][y]:
+                                map_matrix[x][y].remove('G_L')
+
+        elif 'P_G' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có Poison Gas
+                if current_pos not in self.gas_pos:  # Nếu chưa có trong gas_pos
+                    self.health -= 25
+                    if self.jar > 0:    
+                        self.jar -= 1
+                        self.health += 25
+                    elif self.health ==0: self.alive = False
+                    self.gas_pos.append(current_pos)  # Lưu vị trí vào gas_pos
+        elif 'P'in map_matrix[agent_x][agent_y] or 'W' in  map_matrix[agent_x][agent_y]:
+                self.score -= 10000
+                self.alive = False
+        else: self.gas_pos.clear()
 
    
     def run(self, file_path):
@@ -186,8 +233,8 @@ class Agent:
 
         # Sau khi nhấn nút Play, bắt đầu trò chơi
         directions = ['up', 'right', 'down', 'left']
-        position_path = [(1, 2), (1, 2), (2, 2), (3, 2), (3, 2), (3, 2), (3, 2), (3, 3)]
-        action_path = ['move_fw', 'turn_left', 'move_fw', 'move_fw', 'grab', 'turn_right', 'shoot', 'move_fw']
+        position_path = [(1,2),(1,3),(1,4),(1,4),(1,4),(1,3),(1,2),(1,1),(1,1)]
+        action_path = ['move_fw', 'move_fw', 'move_fw','turn_left','turn_left','move_fw','move_fw','move_fw','climb']
 
         path_index = 0  # Chỉ số hiện tại của path
         while self.alive:
@@ -226,7 +273,6 @@ class Agent:
                         target_x, target_y = agent_x, agent_y - 1
                     elif self.direction == 'right':
                         target_x, target_y = agent_x, agent_y + 1
-
                     # Kiểm tra nếu ô kế bên có Wumpus
                     if 0 <= target_x < N and 0 <= target_y < N and 'W' in map_matrix[target_x][target_y]:
                         # Bắn trúng Wumpus
@@ -235,6 +281,12 @@ class Agent:
                         wumpus_death_sound.play()  # Phát âm thanh
                         pygame.time.delay(1300)  # Delay để quan sát chuyển động của agent
                         map_matrix[target_x][target_y].remove('W') # Xóa Wumpus khỏi map
+                
+                elif action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
+                    self.score += 10 
+                    self.alive = False
+                    show_game_end(self, screen)
+
 
                 # Cập nhật màn hình với trạng thái hiện tại của agent
                 self.graph(screen, N, map_matrix, agent_x, agent_y)
@@ -245,6 +297,7 @@ class Agent:
 
             if self.health <= 0 or not self.alive:
                 show_game_over(self, screen)
+
 
 def show_game_over(self, screen):
     # Tạo cửa sổ thông báo "Game Over"
@@ -325,19 +378,19 @@ def show_game_over(self, screen):
 def show_game_end(self, screen):
     # Tạo cửa sổ thông báo "Game Over"
     game_over_window = tk.Tk()
-    game_over_window.title("End Game")
-    game_over_window.geometry("800x450")  # Thay đổi kích thước cửa sổ
+    game_over_window.title("Finish")
+    game_over_window.geometry("900x563")  # Thay đổi kích thước cửa sổ
 
     # Đường dẫn đến thư mục chứa hình ảnh
     image_folder = os.path.join(os.getcwd(), 'image')
 
     # Mở hình ảnh nền
-    background_image_path = os.path.join(image_folder, "adtime.jpg")
+    background_image_path = os.path.join(image_folder, "win.jpg")
     background_image = Image.open(background_image_path)
     background_photo = ImageTk.PhotoImage(background_image)
 
     # Tạo canvas để đặt hình nền
-    canvas = tk.Canvas(game_over_window, width=800, height=450)
+    canvas = tk.Canvas(game_over_window, width=900, height=506)
     canvas.pack(fill="both", expand=True)
     canvas.create_image(0, 0, image=background_photo, anchor="nw")
 
@@ -371,26 +424,26 @@ def show_game_end(self, screen):
         return ImageTk.PhotoImage(image)
 
     # Sử dụng font hệ thống Comic Sans MS
-    font_path = "comic.ttf"  # Comic Sans MS thường có sẵn trên hầu hết các hệ thống
-
+    font_folder = "Gliker"  # Tên thư mục chứa font
+    font_file = "Gliker Semi Bold.ttf"  # Tên file font
+    font_path = os.path.join(font_folder, font_file)
     # Tạo ảnh văn bản "Game Over"
-    game_over_image = create_text_image_no("End Game", font_path, 60, (255,153,204))
-    canvas.create_image(400, 50, image=game_over_image, anchor="center")
-
+    game_over_image = create_text_image_no("Finish", font_path, 100, (255,153,204))
+    canvas.create_image(450, 100, image=game_over_image, anchor="center")
 
     # Tạo ảnh văn bản cho điểm số và sức khỏe
     score_image = create_text_image_no(f"Score: {self.score}", font_path, 24, "white")
     health_image = create_text_image_no(f"Health: {self.health}", font_path, 24, "white")
-    canvas.create_image(400, 150, image=score_image, anchor="center")
-    canvas.create_image(400, 200, image=health_image, anchor="center")
+    canvas.create_image(450, 200, image=score_image, anchor="center")
+    canvas.create_image(450, 250, image=health_image, anchor="center")
 
     # Tạo ảnh bán trong suốt cho nút "Retry" và "Quit"
     retry_image = create_text_image("Retry", font_path, 20, "white", (255,255,255), 100, 50)
     quit_image = create_text_image("Quit", font_path, 20, "white", (255,255,255), 100, 50)
 
     # Thêm hình ảnh có chứa văn bản và lớp phủ bán trong suốt vào canvas
-    retry_button = canvas.create_image(220, 330, image=retry_image, anchor="nw")
-    quit_button = canvas.create_image(470, 330, image=quit_image, anchor="nw")
+    retry_button = canvas.create_image(350, 400, image=retry_image, anchor="center")
+    quit_button = canvas.create_image(550, 400, image=quit_image, anchor="center")
 
     # Tạo sự kiện click cho các nút
     canvas.tag_bind(retry_button, "<Button-1>", lambda event: restart_game(self, game_over_window))
