@@ -5,7 +5,7 @@ from Agent import Agent      # Import class Agent
 import os
 
 # Kích thước màn hình
-WIDTH, HEIGHT = 600, 500
+WIDTH, HEIGHT = 900, 650
 BUTTON_HEIGHT = 50
 BUTTON_WIDTH = 200
 
@@ -33,6 +33,7 @@ def draw_buttons(screen, buttons):
         screen.blit(text, text_rect)
 
 def main():
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "330,100"
     pygame.init()
     agent = Agent(1, 1)
 
@@ -41,7 +42,7 @@ def main():
 
     # Tải hình nền
     image_folder = os.path.join(os.getcwd(), 'image')
-    background_image = pygame.image.load(os.path.join(image_folder, 'bg.jpg'))
+    background_image = pygame.image.load(os.path.join(image_folder, 'background.jpg'))
 
     background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Thay đổi kích thước hình nền cho phù hợp với kích thước cửa sổ
 
@@ -58,12 +59,12 @@ def main():
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                
                 mouse_pos = event.pos
                 for index, button in enumerate(buttons):
                     button_rect = pygame.Rect((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - len(buttons) * (BUTTON_HEIGHT + 10)) // 2 + index * (BUTTON_HEIGHT + 10), BUTTON_WIDTH, BUTTON_HEIGHT)  # Căn giữa
                     if button_rect.collidepoint(mouse_pos):
                         selecting_file = False
-                        screen = pygame.display.set_mode((600, 600))  # Thay đổi kích thước cửa sổ cho bản đồ
                         pygame.display.set_caption("Wumpus World")
                         agent.run(button)  # Chạy game với file đã chọn
 
@@ -71,3 +72,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+

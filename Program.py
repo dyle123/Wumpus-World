@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pygame
+import os
 
 class Program:
     @staticmethod
@@ -58,12 +59,15 @@ class Program:
                                 if '-' in map_matrix[ni][nj]: map_matrix[ni][nj].remove('-')
         return N, map_matrix
 
+    
+
     @staticmethod
     def draw_map(N, map_matrix):
         pygame.init()
-        size = 40  # Kích thước mỗi ô
-        screen_size = N * size
-        screen = pygame.display.set_mode((screen_size, screen_size))
+        size = 20  # Kích thước mỗi ô vuông
+        screen_width = 900 # Thêm không gian cho thông tin bên cạnh
+        screen_height = 900  # Thêm không gian cho thông tin bên dưới
+        screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("Wumpus World")
 
         # Định nghĩa màu sắc
@@ -86,6 +90,7 @@ class Program:
 
             screen.fill((255, 255, 255))  # Màu nền trắng
 
+            # Vẽ bản đồ
             for i in range(N):
                 for j in range(N):
                     x, y = j * size, i * size
@@ -97,10 +102,11 @@ class Program:
                             color = colors[element]
                             pygame.draw.circle(screen, color, (x + size // 2, y + size // 2), size // 4)
 
+            # Thêm thông tin khác ở bên cạnh hoặc bên dưới bản đồ
+            font = pygame.font.SysFont(None, 36)
+            info_text = font.render("Score: 0", True, (0, 0, 0))
+            screen.blit(info_text, (screen_width - 180, 10))
+
             pygame.display.flip()
 
         pygame.quit()
-
-# Ví dụ cách sử dụng:
-# N, map_matrix = Program.read_map_file('path_to_your_file.txt')
-# Program.draw_map(N, map_matrix)
