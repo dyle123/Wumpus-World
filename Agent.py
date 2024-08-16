@@ -295,10 +295,11 @@ def show_game_over(self, screen):
         return ImageTk.PhotoImage(image)
 
     # Sử dụng font hệ thống Comic Sans MS
-    font_path = "comic.ttf"  # Comic Sans MS thường có sẵn trên hầu hết các hệ thống
-
+    font_folder = "Gliker"  # Tên thư mục chứa font
+    font_file = "Gliker Semi Bold.ttf"  # Tên file font
+    font_path = os.path.join(font_folder, font_file)
     # Tạo ảnh văn bản "Game Over"
-    game_over_image = create_text_image_no("You Lost", font_path, 60, (255,153,204))
+    game_over_image = create_text_image_no("You Lost", font_path, 100, (255,153,204))
     canvas.create_image(450, 100, image=game_over_image, anchor="center")
 
     # Tạo ảnh văn bản cho điểm số và sức khỏe

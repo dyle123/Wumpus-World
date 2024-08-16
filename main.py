@@ -1,8 +1,8 @@
 import pygame
 import sys
+import os
 from Program import Program  # Import class Program
 from Agent import Agent      # Import class Agent
-import os
 
 # Kích thước màn hình
 WIDTH, HEIGHT = 900, 650
@@ -10,10 +10,27 @@ BUTTON_HEIGHT = 50
 BUTTON_WIDTH = 200
 
 def draw_buttons(screen, buttons):
-    # Vẽ tiêu đề
-    title_font = pygame.font.Font(None, 48)
-    title_text = title_font.render("SELECT INPUT FILE", True, (255, 255, 255))
-    title_rect = title_text.get_rect(center=(WIDTH // 2, 30))  # Căn giữa tiêu đề
+    # Đặt đường dẫn đến thư mục chứa font
+    font_folder = "Gliker"  # Tên thư mục chứa font
+    font_file = "Gliker Semi Bold.ttf"  # Tên file font
+    font_path = os.path.join(font_folder, font_file)
+
+    # Khởi tạo font Gliker
+    title_font = pygame.font.Font(font_path, 110)
+    
+    # Vẽ tiêu đề với viền trắng
+    title_text = title_font.render("Wumpus World", True, (102, 76, 40))
+    title_rect = title_text.get_rect(center=(WIDTH // 2, 85))  # Căn giữa tiêu đề
+
+    # Vẽ viền trắng cho tiêu đề
+    shadow_offset = 2  # Độ lệch của viền
+    shadow_color = (255, 255, 255)  # Màu trắng cho viền
+    for offset in [(shadow_offset, shadow_offset), (-shadow_offset, shadow_offset), 
+                   (shadow_offset, -shadow_offset), (-shadow_offset, -shadow_offset)]:
+        screen.blit(title_font.render("Wumpus World", True, shadow_color), 
+                    title_rect.move(offset))
+
+    # Vẽ tiêu đề chính
     screen.blit(title_text, title_rect)
 
     # Tính toán vị trí để căn giữa buttons
@@ -25,7 +42,9 @@ def draw_buttons(screen, buttons):
         button_rect = pygame.Rect((WIDTH - BUTTON_WIDTH) // 2, start_y + index * (BUTTON_HEIGHT + 10), BUTTON_WIDTH, BUTTON_HEIGHT)  # Căn giữa
         pygame.draw.rect(screen, (100, 200, 100), button_rect)  # Nền button
         pygame.draw.rect(screen, (0, 0, 0), button_rect, 2)  # Viền đen
-        font = pygame.font.Font(None, 36)
+        
+        # Khởi tạo font Gliker cho các button
+        font = pygame.font.Font(font_path, 36)
         text = font.render(button, True, (0, 0, 0))
         
         # Căn giữa văn bản trong button
@@ -38,12 +57,11 @@ def main():
     agent = Agent(1, 1)
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Select File Input")
+    pygame.display.set_caption("Wumpus World")
 
     # Tải hình nền
     image_folder = os.path.join(os.getcwd(), 'image')
     background_image = pygame.image.load(os.path.join(image_folder, 'background.jpg'))
-
     background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Thay đổi kích thước hình nền cho phù hợp với kích thước cửa sổ
 
     buttons = ['input.txt', 'map2.txt', 'map3.txt', 'map4.txt', 'map5.txt']
@@ -72,6 +90,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
