@@ -17,7 +17,7 @@ class Program:
             for i in range(N):
                 line = file.readline().strip()
                 # Chia các phòng theo dấu chấm (.)
-                row = [cell.split(',') for cell in line.split('.')]
+                row = [cell.split(' ') for cell in line.split('.')]
                 map_matrix[i] = row
 
             return N, map_matrix

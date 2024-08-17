@@ -15,7 +15,7 @@ class Agent:
     def __init__(self, x, y):
         self.x = x  # Vị trí theo trục x
         self.y = y  # Vị trí theo trục y
-        self.direction = 'right'  # Hướng mà tác nhân đang đối diện
+        self.direction = 'up'  # Hướng mà tác nhân đang đối diện
         self.jar = 0
         self.hp_pos = {}
         self.health = 100  # Sức khỏe của tác nhân
@@ -27,6 +27,7 @@ class Agent:
         self.percepts_image = {'B':None, 'S': None, 'G_L': None, 'W_H': None}
         self.gold_appear_time = {}
         self.gas_pos = []
+        self.action = None
 
     def load_images(self, image_folder):
         self.element_images = {
@@ -41,7 +42,7 @@ class Agent:
             'P_G': pygame.image.load(os.path.join(image_folder, 'gas.png')),
         }
         for key in self.element_images:
-            self.element_images[key] = pygame.transform.scale(self.element_images[key], (25, 25))  # Thay đổi kích thước hình ảnh
+            self.element_images[key] = pygame.transform.scale(self.element_images[key], (20, 30))  # Thay đổi kích thước hình ảnh
 
         self.percepts_image = {
             'B': pygame.image.load(os.path.join(image_folder, 'breeze.png')),
@@ -50,7 +51,7 @@ class Agent:
             'W_H': pygame.image.load(os.path.join(image_folder, 'whiff.png')),
         }
         for key in self.percepts_image:
-            self.percepts_image[key] = pygame.transform.scale(self.percepts_image[key], (20, 20))  # Thay đổi kích thước hình
+            self.percepts_image[key] = pygame.transform.scale(self.percepts_image[key], (20, 30))  # Thay đổi kích thước hình
         
     @staticmethod
     def realpos_to_virpos(N, x, y):
@@ -63,7 +64,7 @@ class Agent:
     
     def graph(self, screen, N, map_matrix, agent_x, agent_y):
         # Kích thước mỗi ô
-        cell_size = 60
+        cell_size = 70
         # Vẽ ma trận
         screen.fill((255, 255, 255))  # Màu nền trắng
         font = pygame.font.Font(None, 36)  # Tạo font để in ký tự
@@ -105,8 +106,8 @@ class Agent:
         health_text = info_font.render(f"Health: {self.health}", True, (0, 0, 0))
 
         # Vị trí hiển thị thông tin ở góc trên bên phải
-        score_position = (cell_size * N + 100, 10)
-        health_position = (cell_size * N + 100, 50)
+        score_position = (cell_size * N+60, 10)
+        health_position = (cell_size * N+60, 50)
 
         screen.blit(score_text, score_position)
         screen.blit(health_text, health_position)
@@ -114,10 +115,10 @@ class Agent:
         # Hiển thị các hình ảnh và tên của percepts và elements dưới score và health
         # Từ điển ánh xạ từ key sang tên cụ thể của các elements và percepts
         element_name_map = (
-            'Move Up',
-            'Move Down',
-             'Move Left',
-             'Move Right',
+            'Up',
+            'Down',
+             'Left',
+             'Right',
             'Wumpus',
              'Pit',
             'Gold',
@@ -134,25 +135,25 @@ class Agent:
         element_y_position = 90  # Vị trí y để bắt đầu hiển thị các phần tử và percepts
         for i, (key, image) in enumerate(self.element_images.items()):
             if image:  # Kiểm tra nếu hình ảnh tồn tại
-                image_rect = image.get_rect(topleft=(cell_size * N + 100, element_y_position))
+                image_rect = image.get_rect(topleft=(cell_size * N + 60, element_y_position))
                 screen.blit(image, image_rect.topleft)
                 text = info_font.render(element_name_map[i], True, (0, 0, 0))  # Lấy tên từ element_name_map
-                screen.blit(text, (cell_size * N + 140, element_y_position))
+                screen.blit(text, (cell_size * N + 100, element_y_position))
                 element_y_position += image.get_height() + 10  # Cập nhật vị trí y cho phần tử tiếp theo
 
         percept_y_position = element_y_position  # Tiếp tục từ vị trí dưới cùng của elements
         for i, (key, image) in enumerate(self.percepts_image.items()):
             if image:  # Kiểm tra nếu hình ảnh tồn tại
-                image_rect = image.get_rect(topleft=(cell_size * N + 100, percept_y_position))
+                image_rect = image.get_rect(topleft=(cell_size * N + 60, percept_y_position))
                 screen.blit(image, image_rect.topleft)
                 text = info_font.render(percept_name_map[i], True, (0, 0, 0))  # Lấy tên từ percept_name_map
-                screen.blit(text, (cell_size * N + 140, percept_y_position))
+                screen.blit(text, (cell_size * N + 100, percept_y_position))
                 percept_y_position += image.get_height() + 10  # Cập nhật vị trí y cho percept tiếp theo
 
         pygame.display.flip()  # Cập nhật màn hình
         current_pos = (agent_x, agent_y)
         
-        if 'G' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có vàng
+        if 'G' in map_matrix[agent_x][agent_y] and self.action == 'grab':  # Kiểm tra ô có vàng
                 if current_pos not in self.gold_appear_time:
                     self.gold_appear_time[current_pos] = time.time()
                 elif time.time() - self.gold_appear_time[current_pos] >= 0.0000000001:
@@ -161,16 +162,13 @@ class Agent:
                     map_matrix[agent_x][agent_y].remove('G')
                     self.gold_appear_time.pop(current_pos)
 
-        elif 'H_P' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có bình máu
+        elif 'H_P' in map_matrix[agent_x][agent_y] and self.action == 'grab':  # Kiểm tra ô có bình máu
                 if current_pos not in self.hp_pos:
                     self.hp_pos[current_pos] = time.time()
                 elif time.time() - self.hp_pos[current_pos] >= 0.0000000001:
                     self.jar += 1
                     map_matrix[agent_x][agent_y].remove('H_P')
                     self.hp_pos.pop(current_pos)
-                    if self.health < 100:
-                        self.jar -= 1
-                        self.health += 25
                     # Các tọa độ của ô kề
                     adjacent_cells = [
                         (agent_x - 1, agent_y),  # Ô trên
@@ -188,11 +186,9 @@ class Agent:
         elif 'P_G' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có Poison Gas
                 if current_pos not in self.gas_pos:  # Nếu chưa có trong gas_pos
                     self.health -= 25
-                    if self.jar > 0:    
-                        self.jar -= 1
-                        self.health += 25
-                    elif self.health ==0: self.alive = False
                     self.gas_pos.append(current_pos)  # Lưu vị trí vào gas_pos
+                    if self.health ==0: self.alive = False
+                    
         elif 'P'in map_matrix[agent_x][agent_y] or 'W' in  map_matrix[agent_x][agent_y]:
                 self.score -= 10000
                 self.alive = False
@@ -208,7 +204,7 @@ class Agent:
 
         # Khởi tạo Pygame
         pygame.init()
-        screen = pygame.display.set_mode((900,650))  # Kích thước cửa sổ
+        screen = pygame.display.set_mode((970,720))  # Kích thước cửa sổ
         pygame.display.set_caption("Wumpus World")
         image_folder = os.path.join(os.getcwd(), 'image')
 
@@ -233,8 +229,8 @@ class Agent:
 
         # Sau khi nhấn nút Play, bắt đầu trò chơi
         directions = ['up', 'right', 'down', 'left']
-        position_path = [(1,2),(1,3),(1,4),(1,4),(1,4),(1,3),(1,2),(1,1),(1,1)]
-        action_path = ['move_fw', 'move_fw', 'move_fw','turn_left','turn_left','move_fw','move_fw','move_fw','climb']
+        position_path = [(1,1),(1,1),(2,1),(2,1),(2,2)]
+        action_path = ['shoot','shoot','move_fw','turn_right','move_fw']
 
         path_index = 0  # Chỉ số hiện tại của path
         while self.alive:
@@ -246,15 +242,16 @@ class Agent:
 
             if path_index < len(position_path):
                 # Cập nhật vị trí và hành động
-                action = action_path[path_index]
+                self.action = action_path[path_index]
+
                 self.score -= 10
-                if action == 'turn_left':
+                if self.action == 'turn_left':
                     current_index = directions.index(self.direction)
                     self.direction = directions[(current_index - 1) % 4]
-                elif action == 'turn_right':
+                elif self.action == 'turn_right':
                     current_index = directions.index(self.direction)
                     self.direction = directions[(current_index + 1) % 4]
-                elif action == 'move_fw':
+                elif self.action == 'move_fw':
                     if self.direction == 'up':
                         agent_x = max(agent_x - 1, 0)
                     elif self.direction == 'down':
@@ -263,16 +260,33 @@ class Agent:
                         agent_y = max(agent_y - 1, 0)
                     elif self.direction == 'right':
                         agent_y = min(agent_y + 1, N - 1)
-                elif action == 'shoot':
+                elif self.action == 'shoot':
                     self.score -= 90
+                    # Xác định vị trí và hướng của mũi tên
                     if self.direction == 'up':
+                        arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_up.png'))
                         target_x, target_y = agent_x - 1, agent_y
                     elif self.direction == 'down':
+                        arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_down.png'))
                         target_x, target_y = agent_x + 1, agent_y
                     elif self.direction == 'left':
+                        arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_left.png'))
                         target_x, target_y = agent_x, agent_y - 1
                     elif self.direction == 'right':
+                        arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_right.png'))
                         target_x, target_y = agent_x, agent_y + 1
+                    arrow_image  = pygame.transform.scale(arrow_image, (40, 40))  # Thay đổi kích thước hình ảnh
+                    # Vẽ mũi tên trên màn hình tại vị trí agent
+                    arrow_rect = arrow_image.get_rect(center=(agent_y * 70 + 20, agent_x * 70 + 20))
+                    screen.blit(arrow_image, arrow_rect)
+                    pygame.display.flip()
+                    
+                    # Delay để mũi tên hiển thị trong 1 giây
+                    pygame.time.delay(1000)
+                    
+                    # Cập nhật lại màn hình để xóa mũi tên
+                    self.graph(screen, N, map_matrix, agent_x, agent_y)
+
                     # Kiểm tra nếu ô kế bên có Wumpus
                     if 0 <= target_x < N and 0 <= target_y < N and 'W' in map_matrix[target_x][target_y]:
                         # Bắn trúng Wumpus
@@ -280,12 +294,29 @@ class Agent:
                         wumpus_death_sound = pygame.mixer.Sound(os.path.join(image_folder, 'wumpus_death.mp3'))
                         wumpus_death_sound.play()  # Phát âm thanh
                         pygame.time.delay(1300)  # Delay để quan sát chuyển động của agent
-                        map_matrix[target_x][target_y].remove('W') # Xóa Wumpus khỏi map
+                        map_matrix[target_x][target_y].remove('W')  # Xóa Wumpus khỏi map
+                        adjacent_cells = [
+                            (agent_x - 1, agent_y),  # Ô trên
+                            (agent_x + 1, agent_y),  # Ô dưới
+                            (agent_x, agent_y - 1),  # Ô trái
+                            (agent_x, agent_y + 1)   # Ô phải
+                        ]
+                        # Duyệt qua các ô kề
+                        for (x, y) in adjacent_cells:
+                            # Kiểm tra nếu ô kề nằm trong phạm vi bản đồ và chứa 'G_L'
+                            if 0 <= x < len(map_matrix) and 0 <= y < len(map_matrix[0]):
+                                if 'S' in map_matrix[x][y]:
+                                    map_matrix[x][y].remove('S')
+                                    Program.update_map()
                 
-                elif action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
+                elif self.action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
                     self.score += 10 
                     self.alive = False
                     show_game_end(self, screen)
+
+                elif self.action == 'heal' and self.health < 100 and self.jar > 0:
+                    self.health += 25
+                    self.jar -= 1
 
 
                 # Cập nhật màn hình với trạng thái hiện tại của agent
@@ -464,9 +495,9 @@ def exit_game(self):
  # Hàm để vẽ nút Play
 def draw_play_button(screen):
         button_color = (0, 48, 143)  # Màu xanh lá cho nút Play
-        button_rect = pygame.Rect(750, 580, 100, 50)  # Vị trí và kích thước của nút
+        button_rect = pygame.Rect(730, 580, 200, 70)  # Vị trí và kích thước của nút
         pygame.draw.rect(screen, button_color, button_rect)
-        font = pygame.font.Font(None, 36)
+        font = pygame.font.Font(None, 70)
         text = font.render("Play", True, (255,255,255))
         screen.blit(text, (button_rect.centerx - text.get_width() // 2, button_rect.centery - text.get_height() // 2))
         return button_rect

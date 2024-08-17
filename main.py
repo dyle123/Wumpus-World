@@ -52,8 +52,8 @@ def draw_buttons(screen, buttons):
         screen.blit(text, text_rect)
 
 def main():
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "330,100"
-    pygame.init()
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "280,50"
+    pygame.init()  # Khởi tạo hệ thống Pygame
     agent = Agent(1, 1)
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -64,7 +64,7 @@ def main():
     background_image = pygame.image.load(os.path.join(image_folder, 'background.jpg'))
     background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Thay đổi kích thước hình nền cho phù hợp với kích thước cửa sổ
 
-    buttons = ['input.txt', 'map2.txt', 'map3.txt', 'map4.txt', 'map5.txt']
+    buttons = ['input.txt', 'map1.txt', 'map3.txt', 'map4.txt', 'map5.txt']
 
     selecting_file = True
     while selecting_file:
@@ -75,9 +75,8 @@ def main():
             if event.type == pygame.QUIT:
                 selecting_file = False
                 pygame.quit()
-                sys.exit()
+                sys.exit()  # Đảm bảo thoát đúng cách
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                
                 mouse_pos = event.pos
                 for index, button in enumerate(buttons):
                     button_rect = pygame.Rect((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - len(buttons) * (BUTTON_HEIGHT + 10)) // 2 + index * (BUTTON_HEIGHT + 10), BUTTON_WIDTH, BUTTON_HEIGHT)  # Căn giữa
@@ -86,7 +85,11 @@ def main():
                         pygame.display.set_caption("Wumpus World")
                         agent.run(button)  # Chạy game với file đã chọn
 
-        pygame.display.flip()
+        # Kiểm tra trước khi gọi pygame.display.flip() để tránh lỗi
+        if pygame.get_init():
+            pygame.display.flip()
+
+    pygame.quit()  # Đảm bảo thoát hệ thống Pygame khi kết thúc
 
 if __name__ == "__main__":
     main()
