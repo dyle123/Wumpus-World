@@ -250,6 +250,7 @@ class Agent:
                     self.health -= 25
                     self.gas_pos.append(current_pos)  # Lưu vị trí vào gas_pos
                     if self.health ==0: self.alive = False
+
                     
         elif 'P'in map_matrix[agent_x][agent_y] or 'W' in  map_matrix[agent_x][agent_y]:
                 self.score -= 10000
@@ -310,6 +311,8 @@ class Agent:
 
                 if 0 <= target_x < N and 0 <= target_y < N and 'W' in map_matrix[target_x][target_y]:
                         # Bắn trúng Wumpus
+                        
+                        Algorithm.KO = True
                         #pygame.mixer.init()
                         #pygame.time.delay(1300)  # Delay để quan sát chuyển động của agent
                         map_matrix[target_x][target_y].remove('W')  # Xóa Wumpus khỏi map
@@ -326,6 +329,7 @@ class Agent:
                                 if 'S' in map_matrix[x][y]:
                                     map_matrix[x][y].remove('S')
                                     Program.update_map()
+                                    
             elif self.action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
                 self.score += 10 
                 self.alive = False
@@ -458,6 +462,8 @@ class Agent:
                                 if 'S' in map_matrix[x][y]:
                                     map_matrix[x][y].remove('S')
                                     Program.update_map()
+                                    print(map_matrix[x][y])
+
                 
                 elif self.action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
                     self.score += 10 
@@ -647,7 +653,7 @@ def exit_game(self):
  # Hàm để vẽ nút Play
 def draw_play_button(screen):
         button_color = (0, 48, 143)  # Màu xanh lá cho nút Play
-        button_rect = pygame.Rect(730, 580, 200, 70)  # Vị trí và kích thước của nút
+        button_rect = pygame.Rect(730, 610, 200, 70)  # Vị trí và kích thước của nút
         pygame.draw.rect(screen, button_color, button_rect)
         font = pygame.font.Font(None, 70)
         text = font.render("Play", True, (255,255,255))

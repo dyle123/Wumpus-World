@@ -21,6 +21,7 @@ class Algorithm:
         self.directions = ['up', 'right', 'down', 'left'] 
         self.output_manager = OutputManager()
         self.ACTION = ()
+        self.KO = False
         # Ánh xạ các ký tự sang số nguyên
         self.symbols = {
             'P': 1,
@@ -202,14 +203,15 @@ class Algorithm:
         self.N, self.map_matrix = Program.update_map(file_path)
         self.current_position = Agent.virpos_to_realpos(self.N, 1, 1)
         self.visited.add(self.current_position)  # Đánh dấu ô bắt đầu là đã ghé thăm
-        agent_x, agent_y = self.current_position
+        
         self.safe.add(self.current_position)  # Đánh dấu ô bắt đầu là an toàn
-        done = True
-        while done:
+        done = False  # Đặt done thành False để vòng lặp tiếp tục cho đến khi hoàn tất các nhiệm vụ
+        while not done:
             # Cập nhật cơ sở tri thức dựa trên các percepts hiện tại
             percepts = self.map_matrix[self.current_position[0]][self.current_position[1]]
-            neighbor = Algorithm.get_neighbors(self,self.current_position[0],self.current_position[1])
+            
             self.update_kb(percepts)
+
             if 'P' in percepts or 'W' in percepts or self.agent.health <= 0:
                 self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), 'die') # Ghi action vào file
                 print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: die')
@@ -222,11 +224,12 @@ class Algorithm:
                 self.ACTION.append('grab')
                 self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
                 print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: grab')
-                
 
+            # Kiểm tra Healing Potions
             if 'H_P' in percepts:
                 percepts.remove('H_P')
-                for nb in neighbor:
+                neighbors = self.get_neighbors(self.current_position[0], self.current_position[1])
+                for nb in neighbors:
                     per = self.map_matrix[nb[0]][nb[1]]
                     per.remove('G_L')
                 self.agent.action = 'grab'  # Thực hiện hành động 'grab'
@@ -234,7 +237,7 @@ class Algorithm:
                 self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
                 print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: grab')
 
-            # Kiểm tra xem agent có đi vào ô độc hay không
+            # Kiểm tra Poisonous Gas
             if 'P_G' in percepts:
                 self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), 'damaged') # Ghi action vào file
                 print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: damaged')
@@ -243,10 +246,36 @@ class Algorithm:
                     self.ACTION.append('heal')
                     self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
                     print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: heal')
-                    
+
+            if 'S' in percepts: 
+                self.agent.action = 'shoot'  # Thực hiện hành động 'grab'
+                self.ACTION.append('shoot')
+                self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
+                print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: shoot')
+                if(self.KO == True):
+                    print('trúng')
+                    x, y = self.current_position
+                    if self.facing_direction == 'up':
+                        target_x, target_y = x - 1, y
+                    elif self.facing_direction == 'right':
+                        target_x, target_y = x, y + 1
+                    elif self.facing_direction == 'down':
+                        target_x, target_y = x + 1, y
+                    elif self.facing_direction == 'left':
+                        target_x, target_y = x, y - 1
+                    if 0 <= target_x < self.N and 0 <= target_y < self.N:
+                        per = self.map_matrix[target_x][target_y]
+                        if 'W' in per: 
+                            per.remove('W')
+                            neighbors = self.get_neighbors(target_x, target_y)
+                            for nb in neighbors:
+                                per = self.map_matrix[nb[0]][nb[1]]
+                                per.remove('S')
+                            self.update_kb(per)
+
             # Nếu đã có tất cả vàng, tìm đường về vị trí ban đầu (1, 1)
             if self.check_all_gold_collected():
-                print('HAVE NOT BEEN GOLD YET')
+                print('HAVE ALL GOLD')
                 position_path, action_path = self.get_action_path(self.current_position, Agent.virpos_to_realpos(self.N, 1, 1))
                 if action_path is not None:
                     for action, position in zip(action_path, position_path[1:]):  # Sử dụng zip
@@ -256,14 +285,15 @@ class Algorithm:
                         self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
                         print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: {self.agent.action}')
                     self.ACTION.append('climb')
-                done = False
-                break 
-            
+                    done = True  # Đánh dấu hoàn tất khi đã thu thập tất cả vàng và về vị trí ban đầu
+                else:
+                    done = True  # Nếu không tìm thấy đường về, kết thúc vòng lặp
+
             # Tìm ô an toàn gần nhất chưa được ghé thăm
             next_position = self.find_nearest_safe_unvisited()
             if next_position is None:
                 # Nếu không còn ô an toàn nào, quay lại ô trước đó
-                break
+                done = True
             else:
                 # Tìm đường đi đến ô an toàn gần nhất
                 position_path, action_path = self.get_action_path(self.current_position, next_position)
@@ -272,16 +302,14 @@ class Algorithm:
                         self.agent.action = action
                         self.ACTION.append(action)
                         self.current_position = position
-                        
                         self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
                         print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: {self.agent.action}')
                     self.visited.add(self.current_position)
                 else:
                     # Nếu không tìm thấy đường đi, quay lại ô trước đó
-                    break
+                    done = True
         Agent.path = self.ACTION
-        self.output_manager.close_file() # Đóng file output sau khi thoát khỏi vòng lặp whilex
-
+        self.output_manager.close_file() # Đóng file output sau khi thoát khỏi vòng lặp while
     def check_all_gold_collected(self):
         """
         Kiểm tra xem tất cả vàng trong bản đồ đã được thu thập hay chưa.

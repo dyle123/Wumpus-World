@@ -64,7 +64,7 @@ def main():
     background_image = pygame.image.load(os.path.join(image_folder, 'background.jpg'))
     background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Thay đổi kích thước hình nền cho phù hợp với kích thước cửa sổ
 
-    buttons = ['input.txt', 'map1.txt', 'map3.txt', 'map4.txt', 'map5.txt']
+    buttons = ['map1.txt', 'map2.txt', 'map3.txt', 'map4.txt', 'map5.txt']
 
     selecting_file = True
     while selecting_file:
