@@ -2,7 +2,7 @@ import pygame
 import sys
 import os
 from Program import Program  # Import class Program
-from Agent import Agent      # Import class Agent
+from agent import Agent      # Import class Agent
 
 # Kích thước màn hình
 WIDTH, HEIGHT = 900, 650

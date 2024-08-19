@@ -2,12 +2,10 @@ from Program import Program
 import pygame
 import os
 import tkinter as tk
-from tkinter import messagebox
 import sys
 import subprocess
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import time
-
 
 
 class Agent:
@@ -28,6 +26,25 @@ class Agent:
         self.gold_appear_time = {}
         self.gas_pos = []
         self.action = None
+        self.path = ()
+        pass 
+
+    def reset(self):
+        self.direction = 'up'  # Hướng mà tác nhân đang đối diện
+        self.jar = 0
+        self.hp_pos = {}
+        self.health = 100  # Sức khỏe của tác nhân
+        self.alive = True  # Kiểm tra xem tác nhân còn sống hay không
+        self.arrows = float('inf')  # Tác nhân có vô hạn tên
+        self.percepts = {}  # Lưu trữ các percepts hiện tại
+        self.score = 0  # Điểm số của tác nhân
+        self.element_images = {'up': None, 'down': None, 'left': None, 'right': None, 'W': None, 'P': None, 'G': None,'H_P':None, 'P_G':None}
+        self.percepts_image = {'B':None, 'S': None, 'G_L': None, 'W_H': None}
+        self.gold_appear_time = {}
+        self.gas_pos = []
+        self.action = None
+        self.path = ()
+        pass 
 
     def load_images(self, image_folder):
         self.element_images = {
@@ -60,6 +77,51 @@ class Agent:
     @staticmethod
     def virpos_to_realpos(N, x, y):
         return N - x, y - 1
+    
+
+    def graph_al(self, map_matrix, agent_x, agent_y):
+        current_pos = (agent_x, agent_y)
+        
+        if 'G' in map_matrix[agent_x][agent_y] and self.action == 'grab':  # Kiểm tra ô có vàng
+                if current_pos not in self.gold_appear_time:
+                    self.gold_appear_time[current_pos] = time.time()
+                elif time.time() - self.gold_appear_time[current_pos] >= 0.0000000001:
+                    self.getgold = True
+                    self.score += 5000
+                    map_matrix[agent_x][agent_y].remove('G')
+                    self.gold_appear_time.pop(current_pos)
+
+        elif 'H_P' in map_matrix[agent_x][agent_y] and self.action == 'grab':  # Kiểm tra ô có bình máu
+                if current_pos not in self.hp_pos:
+                    self.hp_pos[current_pos] = time.time()
+                elif time.time() - self.hp_pos[current_pos] >= 0.0000000001:
+                    self.jar += 1
+                    map_matrix[agent_x][agent_y].remove('H_P')
+                    self.hp_pos.pop(current_pos)
+                    # Các tọa độ của ô kề
+                    adjacent_cells = [
+                        (agent_x - 1, agent_y),  # Ô trên
+                        (agent_x + 1, agent_y),  # Ô dưới
+                        (agent_x, agent_y - 1),  # Ô trái
+                        (agent_x, agent_y + 1)   # Ô phải
+                    ]
+                    # Duyệt qua các ô kề
+                    for (x, y) in adjacent_cells:
+                        # Kiểm tra nếu ô kề nằm trong phạm vi bản đồ và chứa 'G_L'
+                        if 0 <= x < len(map_matrix) and 0 <= y < len(map_matrix[0]):
+                            if 'G_L' in map_matrix[x][y]:
+                                map_matrix[x][y].remove('G_L')
+
+        elif 'P_G' in map_matrix[agent_x][agent_y]:  # Kiểm tra ô có Poison Gas
+                if current_pos not in self.gas_pos:  # Nếu chưa có trong gas_pos
+                    self.health -= 25
+                    self.gas_pos.append(current_pos)  # Lưu vị trí vào gas_pos
+                    if self.health ==0: self.alive = False
+                    
+        elif 'P'in map_matrix[agent_x][agent_y] or 'W' in  map_matrix[agent_x][agent_y]:
+                self.score -= 10000
+                self.alive = False
+        else: self.gas_pos.clear()
 
     
     def graph(self, screen, N, map_matrix, agent_x, agent_y):
@@ -195,8 +257,96 @@ class Agent:
         else: self.gas_pos.clear()
 
    
+
+   
     def run(self, file_path):
-        # Lấy kích thước và ma trận từ Program
+        from algorithm import Algorithm
+        N, map_matrix = Program.update_map(file_path)
+        agent_x = 1
+        agent_y = 1
+        agent_x, agent_y = Agent.virpos_to_realpos(N, agent_x, agent_y)
+
+        algorithm = Algorithm(self)
+        algorithm.explore(file_path)
+
+        
+        
+        while self.alive:
+            # Cập nhật màn hình với trạng thái hiện tại của agent
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.alive = False
+
+            self.score -= 10
+            if self.action == 'turn_left':
+                current_index = self.directions.index(self.direction)
+                self.direction = self.directions[(current_index - 1) % 4]
+            elif self.action == 'turn_right':
+                current_index = self.directions.index(self.direction)
+                self.direction = self.directions[(current_index + 1) % 4]
+            elif self.action == 'move_fw':
+                if self.direction == 'up':
+                    agent_x = max(agent_x - 1, 0)
+                elif self.direction == 'down':
+                    agent_x = min(agent_x + 1, N - 1)
+                elif self.direction == 'left':
+                    agent_y = max(agent_y - 1, 0)
+                elif self.direction == 'right':
+                    agent_y = min(agent_y + 1, N - 1)
+            elif self.action == 'shoot':
+                self.score -= 90
+                # Xác định vị trí và hướng của mũi tên
+                if self.direction == 'up':
+                    target_x, target_y = agent_x - 1, agent_y
+                elif self.direction == 'down':
+                    #arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_down.png'))
+                    target_x, target_y = agent_x + 1, agent_y
+                elif self.direction == 'left':
+                    #arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_left.png'))
+                    target_x, target_y = agent_x, agent_y - 1
+                elif self.direction == 'right':
+                    #arrow_image = pygame.image.load(os.path.join(image_folder, 'arrow_right.png'))
+                    target_x, target_y = agent_x, agent_y + 1
+
+                if 0 <= target_x < N and 0 <= target_y < N and 'W' in map_matrix[target_x][target_y]:
+                        # Bắn trúng Wumpus
+                        #pygame.mixer.init()
+                        #pygame.time.delay(1300)  # Delay để quan sát chuyển động của agent
+                        map_matrix[target_x][target_y].remove('W')  # Xóa Wumpus khỏi map
+                        adjacent_cells = [
+                            (agent_x - 1, agent_y),  # Ô trên
+                            (agent_x + 1, agent_y),  # Ô dưới
+                            (agent_x, agent_y - 1),  # Ô trái
+                            (agent_x, agent_y + 1)   # Ô phải
+                        ]
+                        # Duyệt qua các ô kề
+                        for (x, y) in adjacent_cells:
+                            # Kiểm tra nếu ô kề nằm trong phạm vi bản đồ và chứa 'G_L'
+                            if 0 <= x < len(map_matrix) and 0 <= y < len(map_matrix[0]):
+                                if 'S' in map_matrix[x][y]:
+                                    map_matrix[x][y].remove('S')
+                                    Program.update_map()
+            elif self.action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
+                self.score += 10 
+                self.alive = False
+            elif self.action == 'heal' and self.health < 100 and self.jar > 0:
+                self.health += 25
+                self.jar -= 1
+
+            # Cập nhật màn hình với trạng thái hiện tại của agent
+            self.graph_al( map_matrix, agent_x, agent_y)
+
+            if self.health <= 0 or not self.alive:
+                break
+        action =   Agent.path
+        self.reset()
+        Agent.visualize(self,file_path,Agent.path)
+        
+
+
+
+    def visualize(self, file_path,action_tup):
+       # Lấy kích thước và ma trận từ Program
         N, map_matrix = Program.update_map(file_path)
         agent_x = 1
         agent_y = 1
@@ -229,8 +379,8 @@ class Agent:
 
         # Sau khi nhấn nút Play, bắt đầu trò chơi
         directions = ['up', 'right', 'down', 'left']
-        position_path = [(1,1),(1,1),(2,1),(2,1),(2,2)]
-        action_path = ['shoot','shoot','move_fw','turn_right','move_fw']
+        
+        action_path = action_tup
 
         path_index = 0  # Chỉ số hiện tại của path
         while self.alive:
@@ -240,10 +390,10 @@ class Agent:
                 if event.type == pygame.QUIT:
                     self.alive = False
 
-            if path_index < len(position_path):
+            if path_index < len(action_path):
                 # Cập nhật vị trí và hành động
                 self.action = action_path[path_index]
-
+                print(self.action)
                 self.score -= 10
                 if self.action == 'turn_left':
                     current_index = directions.index(self.direction)
@@ -329,7 +479,9 @@ class Agent:
             if self.health <= 0 or not self.alive:
                 show_game_over(self, screen)
 
+                    
 
+            
 def show_game_over(self, screen):
     # Tạo cửa sổ thông báo "Game Over"
     game_over_window = tk.Tk()
