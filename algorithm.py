@@ -252,18 +252,16 @@ class Algorithm:
                 self.ACTION.append('shoot')
                 self.output_manager.write_action(Agent.realpos_to_virpos(self.N, *self.current_position), self.agent.action) # Ghi action vào file
                 print(f'{Agent.realpos_to_virpos(self.N, *self.current_position)}: shoot')
-                if(self.KO == True):
-                    print('trúng')
-                    x, y = self.current_position
-                    if self.facing_direction == 'up':
-                        target_x, target_y = x - 1, y
-                    elif self.facing_direction == 'right':
-                        target_x, target_y = x, y + 1
-                    elif self.facing_direction == 'down':
-                        target_x, target_y = x + 1, y
-                    elif self.facing_direction == 'left':
-                        target_x, target_y = x, y - 1
-                    if 0 <= target_x < self.N and 0 <= target_y < self.N:
+                x, y = self.current_position
+                if self.facing_direction == 'up':
+                    target_x, target_y = x - 1, y
+                elif self.facing_direction == 'right':
+                    target_x, target_y = x, y + 1
+                elif self.facing_direction == 'down':
+                    target_x, target_y = x + 1, y
+                elif self.facing_direction == 'left':
+                    target_x, target_y = x, y - 1
+                if 0 <= target_x < self.N and 0 <= target_y < self.N:
                         per = self.map_matrix[target_x][target_y]
                         if 'W' in per: 
                             per.remove('W')
@@ -272,6 +270,7 @@ class Algorithm:
                                 per = self.map_matrix[nb[0]][nb[1]]
                                 per.remove('S')
                             self.update_kb(per)
+
 
             # Nếu đã có tất cả vàng, tìm đường về vị trí ban đầu (1, 1)
             if self.check_all_gold_collected():

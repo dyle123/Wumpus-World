@@ -27,6 +27,7 @@ class Agent:
         self.gas_pos = []
         self.action = None
         self.path = ()
+        self.KO= False
         pass 
 
     def reset(self):
@@ -312,7 +313,7 @@ class Agent:
                 if 0 <= target_x < N and 0 <= target_y < N and 'W' in map_matrix[target_x][target_y]:
                         # Bắn trúng Wumpus
                         
-                        Algorithm.KO = True
+                        Agent.KO = True
                         #pygame.mixer.init()
                         #pygame.time.delay(1300)  # Delay để quan sát chuyển động của agent
                         map_matrix[target_x][target_y].remove('W')  # Xóa Wumpus khỏi map
@@ -329,7 +330,7 @@ class Agent:
                                 if 'S' in map_matrix[x][y]:
                                     map_matrix[x][y].remove('S')
                                     Program.update_map()
-                                    
+
             elif self.action == 'climb' and Agent.realpos_to_virpos(N,agent_x,agent_y) == (1,1):
                 self.score += 10 
                 self.alive = False
